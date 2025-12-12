@@ -43,6 +43,24 @@ export class DevboxContainer extends Container {
     };
   }
 
+  // RPC used by the Worker UI
+  public async getStatus(): Promise<"running" | "stopped" | "starting" | "stopping"> {
+    const state = await this.getState();
+    const running = this._container?.running;
+
+    if (state.status === "stopped" || state.status === "stopped_with_code") {
+      return "stopped";
+    }
+    if (state.status === "running" || state.status === "healthy") {
+      return running ? "running" : "stopped";
+    }
+    if (state.status === "starting") {
+      return "starting";
+    }
+    // Default fallback
+    return running ? "running" : "stopped";
+  }
+
   // Minimal container HTTP endpoint (useful for quick sanity checks)
   async fetch(request: Request): Promise<Response> {
     const url = new URL(request.url);
