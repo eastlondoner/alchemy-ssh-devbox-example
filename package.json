@@ -1,0 +1,22 @@
+{
+  "name": "alchemy-ssh-devbox-example",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "touch .env && NODE_ENV=development alchemy dev --env-file .env",
+    "deploy": "touch .env && NODE_ENV=production alchemy deploy --env-file .env",
+    "destroy": "touch .env && NODE_ENV=production alchemy destroy --env-file .env",
+    "configure": "alchemy configure",
+    "version": "alchemy --version"
+  },
+  "devDependencies": {
+    "alchemy": "https://pkg.pr.new/alchemy-run/alchemy@4e1b1698",
+    "@cloudflare/containers": "^0.0.28",
+    "@cloudflare/workers-types": "4.20250926.0",
+    "@types/node": "^24.5.2",
+    "typescript": "^5.9.2"
+  }
+}
+
+
