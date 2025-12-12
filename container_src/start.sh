@@ -17,9 +17,46 @@ if ! id -u "$SSH_USERNAME" >/dev/null 2>&1; then
   useradd -m -s /bin/bash "$SSH_USERNAME"
 fi
 
-# Set empty password for the user (WARP routing provides the security layer)
-echo "[devbox] setting empty password for $SSH_USERNAME"
-passwd -d "$SSH_USERNAME" || echo "[devbox] WARNING: Failed to set empty password"
+HOME_DIR="$(getent passwd "$SSH_USERNAME" | cut -d: -f6)"
+
+# ============================================================================
+# SSH Authentication Setup
+# ============================================================================
+# If SSH_PUBLIC_KEY is provided, use public key auth.
+# Otherwise, use empty password auth (WARP routing provides the security layer).
+
+if [ -n "$SSH_PUBLIC_KEY" ]; then
+  echo "[devbox] SSH_PUBLIC_KEY provided - configuring public key authentication"
+  
+  # Set up authorized_keys
+  mkdir -p "$HOME_DIR/.ssh"
+  chmod 700 "$HOME_DIR/.ssh"
+  printf "%s\n" "$SSH_PUBLIC_KEY" > "$HOME_DIR/.ssh/authorized_keys"
+  chmod 600 "$HOME_DIR/.ssh/authorized_keys"
+  chown -R "$SSH_USERNAME:$SSH_USERNAME" "$HOME_DIR/.ssh"
+  
+  # Configure sshd for pubkey auth
+  cat >> /etc/ssh/sshd_config.d/devbox.conf <<EOF
+# Public key authentication (SSH_PUBLIC_KEY was provided)
+PubkeyAuthentication yes
+AuthorizedKeysFile .ssh/authorized_keys
+PasswordAuthentication no
+EOF
+else
+  echo "[devbox] No SSH_PUBLIC_KEY - configuring empty password authentication"
+  
+  # Set empty password for the user
+  passwd -d "$SSH_USERNAME" || echo "[devbox] WARNING: Failed to set empty password"
+  
+  # Configure sshd for password auth with empty password
+  cat >> /etc/ssh/sshd_config.d/devbox.conf <<EOF
+# Password authentication with empty password (no SSH_PUBLIC_KEY provided)
+# WARP routing provides the security layer
+PasswordAuthentication yes
+PermitEmptyPasswords yes
+PubkeyAuthentication no
+EOF
+fi
 
 # ============================================================================
 # WARP / Cloudflare Tunnel Setup

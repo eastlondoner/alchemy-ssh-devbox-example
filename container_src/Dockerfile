@@ -12,8 +12,11 @@
 # Required env vars at runtime:
 #   CLOUDFLARE_TUNNEL_TOKEN - tunnel token from Alchemy
 #   WARP_DESTINATION_IP     - the private 100.x.x.x IP for WARP routing
-#   SSH_PUBLIC_KEY          - your SSH public key (e.g. ssh-ed25519 AAAA...)
-#   SSH_USERNAME            - (optional) defaults to "dev"
+#
+# Optional env vars:
+#   SSH_PUBLIC_KEY - if set, enables public key auth with this key
+#                    if not set, uses empty password auth (WARP provides security)
+#   SSH_USERNAME   - defaults to "dev"
 
 FROM debian:bookworm-slim
 
@@ -40,7 +43,7 @@ RUN apt-get update \
   && rm -rf /var/lib/apt/lists/*
 
 # Default sshd config: only localhost until entrypoint adds WARP IP
-# Uses password auth with empty password for simplicity (WARP provides security)
+# Auth mode (password vs pubkey) is configured at runtime by start.sh
 RUN printf '%s\n' \
   '# Listen on localhost only by default' \
   '# The entrypoint script appends WARP_DESTINATION_IP at runtime' \
@@ -50,18 +53,13 @@ RUN printf '%s\n' \
   '# Security: no root login' \
   'PermitRootLogin no' \
   'AllowUsers dev' \
-  '' \
-  '# Password auth with empty password (WARP routing provides security layer)' \
-  'PasswordAuthentication yes' \
-  'PermitEmptyPasswords yes' \
   'UsePAM yes' \
-  '' \
-  '# Disable pubkey (password-only for simplicity)' \
-  'PubkeyAuthentication no' \
   '' \
   '# Keep connections stable for editor sessions' \
   'ClientAliveInterval 30' \
   'ClientAliveCountMax 3' \
+  '' \
+  '# Auth mode is configured at runtime by start.sh based on SSH_PUBLIC_KEY' \
   > /etc/ssh/sshd_config.d/devbox.conf
 
 COPY --chmod=755 start.sh /usr/local/bin/start.sh

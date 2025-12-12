@@ -48,18 +48,29 @@ There is **nothing Minecraft-related** here.
 
 This example reads env vars from `.env` when you run `bun run dev` / `bun run deploy`.
 
-1. Copy `example.env` to `.env`:
+1. Create a `.env` file (or copy from `example.env` if it exists):
 
 ```bash
-cp example.env .env
+touch .env
 ```
 
-2. Set `SSH_PUBLIC_KEY` (recommended):
-   - Put your **public** key line (e.g. `ssh-ed25519 AAAA... you@laptop`) into `.env`.
+2. **Authentication** – choose one:
+
+   **Option A: Empty password (default, simplest)**
+   - Don't set `SSH_PUBLIC_KEY` – leave it empty or omit it
+   - SSH will prompt for a password; just press Enter (empty)
+   - WARP routing provides the security layer (only enrolled devices can reach the IP)
+
+   **Option B: Public key auth**
+   - Set `SSH_PUBLIC_KEY` in `.env` to your public key:
+     ```
+     SSH_PUBLIC_KEY="ssh-ed25519 AAAA... you@laptop"
+     ```
+   - The container will install this key and require it for SSH
 
 3. Optional: change the IP
    - Default is `100.120.1.1` (chosen to avoid conflicts with existing WARP routes).
-   - If you change it, update `WARP_DESTINATION_IP` in `.env`.
+   - If you change it, set `WARP_DESTINATION_IP` in `.env`.
 
 ## Run (dev)
 
@@ -74,7 +85,23 @@ Open the Worker URL in your browser and click **Start / Wake container**.
 
 ## SSH config
 
-Add this to your `~/.ssh/config`:
+Add this to your `~/.ssh/config`. The Worker UI will show the exact config to use.
+
+**If using empty password auth (default):**
+
+```ssh-config
+Host cf-devbox
+  HostName 100.120.1.1
+  User dev
+  StrictHostKeyChecking no
+  PreferredAuthentications password
+  PubkeyAuthentication no
+  UserKnownHostsFile /dev/null
+  ServerAliveInterval 30
+  ServerAliveCountMax 3
+```
+
+**If using public key auth (SSH_PUBLIC_KEY was set):**
 
 ```ssh-config
 Host cf-devbox
@@ -88,6 +115,7 @@ Then connect:
 
 ```bash
 ssh cf-devbox
+# If using empty password, just press Enter when prompted
 ```
 
 ## Open in VS Code / Cursor over SSH
@@ -113,15 +141,19 @@ Deep link (optional):
 
 ## Notes / troubleshooting
 
-- **If SSH hangs**:
+- **If SSH hangs or "Network is unreachable"**:
   - confirm Cloudflare WARP is connected and your device is enrolled in the same org as the Tunnel
-  - confirm you clicked **Start / Wake container**
-  - confirm `SSH_PUBLIC_KEY` is set in `.env`
+  - confirm you clicked **Start / Wake container** and status shows "running"
+  - wait a few seconds for cloudflared to connect inside the container
+- **If "Permission denied"**:
+  - if using public key auth, confirm `SSH_PUBLIC_KEY` in `.env` matches your local key
+  - if using empty password, make sure your SSH config has `PreferredAuthentications password`
 - **Changing users**:
   - set `SSH_USERNAME` in `.env` (default is `dev`)
 - **Security**:
   - this example Worker is public and intentionally minimal
-  - SSH is key-only by default (no passwords)
+  - WARP routing provides the security layer (only enrolled devices can reach the private IP)
+  - empty password mode is safe because the IP is only routable via WARP
 
 ## Making this a standalone git repo
 

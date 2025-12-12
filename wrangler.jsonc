@@ -1,7 +1,0 @@
-// This exists mainly to keep Workers builds happy in some CI environments.
-{
-  "name": "alchemy-ssh-devbox-example"
-}
-
-
-

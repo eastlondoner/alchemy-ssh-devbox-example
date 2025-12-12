@@ -38,8 +38,9 @@ function page(opts: {
   warpIp: string;
   sshUsername: string;
   sshHostAlias: string;
+  usePublicKey: boolean;
 }): string {
-  const { workerUrl, warpIp, sshUsername, sshHostAlias } = opts;
+  const { workerUrl, warpIp, sshUsername, sshHostAlias, usePublicKey } = opts;
 
   const vscodeDeepLink = `vscode://vscode-remote/ssh-remote+${encodeURIComponent(
     sshHostAlias
@@ -91,9 +92,18 @@ function page(opts: {
         <p>
           IP (WARP route): <code>${warpIp}</code><br/>
           Username: <code>${sshUsername}</code><br/>
-          Password: <em>(empty - just press Enter)</em>
+          Auth: <em>${usePublicKey ? "Public key (configured at deploy time)" : "Password (empty - just press Enter)"}</em>
         </p>
-        <pre><code># ~/.ssh/config
+${usePublicKey ? `        <pre><code># ~/.ssh/config
+Host ${sshHostAlias}
+  HostName ${warpIp}
+  User ${sshUsername}
+  ServerAliveInterval 30
+  ServerAliveCountMax 3
+</code></pre>
+        <pre><code># connect
+ssh ${sshHostAlias}
+</code></pre>` : `        <pre><code># ~/.ssh/config
 Host ${sshHostAlias}
   HostName ${warpIp}
   User ${sshUsername}
@@ -106,7 +116,7 @@ Host ${sshHostAlias}
 </code></pre>
         <pre><code># connect (password is empty, just press Enter)
 ssh ${sshHostAlias}
-</code></pre>
+</code></pre>`}
       </div>
 
       <div class="card">
@@ -221,6 +231,7 @@ export default {
 
     const ssh = await container.getSshInfo();
     const workerUrl = url.origin;
+    const usePublicKey = !!env.SSH_PUBLIC_KEY && env.SSH_PUBLIC_KEY !== "";
 
     return html(
       page({
@@ -228,6 +239,7 @@ export default {
         warpIp: ssh.ip,
         sshUsername: ssh.username,
         sshHostAlias: "cf-devbox",
+        usePublicKey,
       })
     );
   },
