@@ -11,7 +11,7 @@
     "version": "alchemy --version"
   },
   "devDependencies": {
-    "alchemy": "https://pkg.pr.new/alchemy-run/alchemy@4e1b1698",
+    "alchemy": "0.81.1",
     "@cloudflare/containers": "^0.0.28",
     "@cloudflare/workers-types": "4.20250926.0",
     "@types/node": "^24.5.2",

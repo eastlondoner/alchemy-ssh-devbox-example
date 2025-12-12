@@ -40,7 +40,7 @@ There is **nothing Minecraft-related** here.
 - **Bun** installed locally (to run `bun install` / `bun run dev`)
 - A **Cloudflare account** with **Zero Trust** enabled
 - **Cloudflare WARP client** installed on your laptop, enrolled in your org
-- **Alchemy CLI** (installed via `bun install`, provided by this repo’s `package.json`)
+- **Alchemy CLI** (installed via `bun install`, provided by this repo’s `package.json` from npm)
 
 ## Configure env vars
 
