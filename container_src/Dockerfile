@@ -1,7 +1,23 @@
 # syntax=docker/dockerfile:1
+#
+# Minimal SSH devbox for Cloudflare Containers with WARP routing
+#
+# This container runs sshd + cloudflared to allow SSH access via Cloudflare WARP.
+# The entrypoint script:
+#   1. Adds WARP_DESTINATION_IP to the loopback interface (ip addr add)
+#   2. Configures sshd to listen on that IP
+#   3. Enables ICMP proxy for cloudflared (sysctl ping_group_range)
+#   4. Runs cloudflared tunnel with --protocol http2
+#
+# Required env vars at runtime:
+#   CLOUDFLARE_TUNNEL_TOKEN - tunnel token from Alchemy
+#   WARP_DESTINATION_IP     - the private 100.x.x.x IP for WARP routing
+#   SSH_PUBLIC_KEY          - your SSH public key (e.g. ssh-ed25519 AAAA...)
+#   SSH_USERNAME            - (optional) defaults to "dev"
 
 FROM debian:bookworm-slim
 
+# Install sshd, cloudflared, and network tools needed for WARP setup
 RUN apt-get update \
   && DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
     ca-certificates \
@@ -23,13 +39,14 @@ RUN apt-get update \
   && DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends cloudflared \
   && rm -rf /var/lib/apt/lists/*
 
-# Default: only localhost. The entrypoint appends WARP_DESTINATION_IP at runtime.
+# Default sshd config: only localhost until entrypoint adds WARP IP
 RUN printf '%s\n' \
-  '# Listen on localhost only by default (cloudflared and/or WARP IP will be added at runtime)' \
+  '# Listen on localhost only by default' \
+  '# The entrypoint script appends WARP_DESTINATION_IP at runtime' \
   'ListenAddress 127.0.0.1' \
   'ListenAddress ::1' \
   '' \
-  '# Security defaults for an example devbox' \
+  '# Security: key-only auth, no root login' \
   'PermitRootLogin no' \
   'PasswordAuthentication no' \
   'KbdInteractiveAuthentication no' \
@@ -37,11 +54,11 @@ RUN printf '%s\n' \
   'UsePAM yes' \
   'AllowUsers dev' \
   '' \
-  '# Allow key auth' \
+  '# Key authentication' \
   'PubkeyAuthentication yes' \
   'AuthorizedKeysFile .ssh/authorized_keys' \
   '' \
-  '# Keep the connection stable for editor sessions' \
+  '# Keep connections stable for editor sessions' \
   'ClientAliveInterval 30' \
   'ClientAliveCountMax 3' \
   > /etc/ssh/sshd_config.d/devbox.conf
@@ -50,5 +67,3 @@ COPY --chmod=755 start.sh /usr/local/bin/start.sh
 
 EXPOSE 22
 CMD ["/usr/local/bin/start.sh"]
-
-

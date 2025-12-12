@@ -1,6 +1,9 @@
 import { env as workerEnv } from "cloudflare:workers";
 import type { worker } from "../alchemy.run";
 
+// Re-export the Durable Object class so Cloudflare can find it
+export { DevboxContainer } from "./container";
+
 const env = workerEnv as typeof worker.Env;
 
 const CONTAINER_NAME = "devbox";
@@ -184,5 +187,6 @@ export default {
     );
   },
 };
+
 
 

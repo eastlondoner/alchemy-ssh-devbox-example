@@ -12,7 +12,7 @@ There is **nothing Minecraft-related** here.
 ## What you get
 
 - **Worker UI** (public): shows the SSH target and offers a "Start / Wake container" button
-- **SSH into the container** at a fixed **100.x.x.x** address (default: `100.101.102.103`)
+- **SSH into the container** at a fixed **100.x.x.x** address (default: `100.120.1.1`)
 - **Editor support**:
   - VS Code: Remote - SSH
   - Cursor: Remote - SSH (same workflow)
@@ -21,11 +21,13 @@ There is **nothing Minecraft-related** here.
 
 1. `alchemy.run.ts` creates a **Cloudflare Tunnel** with **WARP routing enabled**
 2. `alchemy.run.ts` creates a **TunnelRoute** for a **/32** in `100.0.0.0/8`:
-   - default: `100.101.102.103/32`
+   - default: `100.120.1.1/32`
 3. The container runs:
    - `sshd` listening on `127.0.0.1` **and** the `WARP_DESTINATION_IP`
-   - `cloudflared tunnel run ...` to attach itself to the Tunnel
-4. Any device enrolled in your Zero Trust org via **Cloudflare WARP** can reach `100.101.102.103:22`
+   - `cloudflared tunnel run --protocol http2 ...` to attach itself to the Tunnel
+   - Enables ICMP proxy via `sysctl` for cloudflared
+   - Adds the WARP IP to the loopback interface
+4. Any device enrolled in your Zero Trust org via **Cloudflare WARP** can reach `100.120.1.1:22`
 
 ## Files to look at
 
@@ -56,7 +58,7 @@ cp example.env .env
    - Put your **public** key line (e.g. `ssh-ed25519 AAAA... you@laptop`) into `.env`.
 
 3. Optional: change the IP
-   - Default is `100.101.102.103` (chosen to avoid Mineflare’s `100.80.80.80`).
+   - Default is `100.120.1.1` (chosen to avoid conflicts with existing WARP routes).
    - If you change it, update `WARP_DESTINATION_IP` in `.env`.
 
 ## Run (dev)
@@ -76,7 +78,7 @@ Add this to your `~/.ssh/config`:
 
 ```ssh-config
 Host cf-devbox
-  HostName 100.101.102.103
+  HostName 100.120.1.1
   User dev
   ServerAliveInterval 30
   ServerAliveCountMax 3

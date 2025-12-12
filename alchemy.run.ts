@@ -24,29 +24,29 @@ const app = await alchemy(appName, {
   stage: appName,
 });
 
-// Pick a memorable 100.x.x.x IP that doesn't clash with Mineflare's default (100.80.80.80)
-export const WARP_DESTINATION_IP = process.env.WARP_DESTINATION_IP ?? "100.101.102.103";
+// Pick a memorable 100.x.x.x IP outside any existing WARP route CIDRs.
+// Avoid 100.96.0.0/12 (100.96–100.111) as there's often a broader route there.
+export const WARP_DESTINATION_IP = process.env.WARP_DESTINATION_IP ?? "100.120.1.1";
 
-// Create a Tunnel with WARP routing enabled
-const tunnel = await Tunnel("devbox-tunnel", {
-  name: `${app.name}-devbox`,
+// Create a Tunnel with WARP routing enabled.
+// We only need the required catch-all ingress rule; SSH access is via WARP routing
+// at the IP layer, not hostname-based ingress.
+const tunnel = await Tunnel("devbox-ssh-tunnel", {
+  name: `${app.name}-devbox-ssh`,
   adopt: true,
   warpRouting: { enabled: true },
-  // Ingress is mostly useful for hostname-based services; WARP routing will
-  // also carry raw TCP to the private IP below.
-  ingress: [
-    {
-      service: "ssh://localhost:22",
-      originRequest: { noTLSVerify: true },
-    },
-    { service: "http_status:404" },
-  ],
+  ingress: [{ service: "http_status:404" }],
 });
+
+// Capture the tunnel token - must be resolved before use in bindings
+const tunnelToken = tunnel.token.unencrypted;
+if (!tunnelToken) {
+  throw new Error("Tunnel token is undefined - this shouldn't happen after successful tunnel creation/adoption");
+}
 
 await TunnelRoute("devbox-warp-route", {
   network: `${WARP_DESTINATION_IP}/32`,
   tunnel,
-  adopt: true,
   comment: "WARP route for SSH into a Cloudflare Container",
 });
 
@@ -78,10 +78,9 @@ export const worker = await Worker("devbox-worker", {
   entrypoint: "src/worker.ts",
   adopt: true,
   compatibility: "node",
-  compatibilityFlags: ["enable_ctx_exports"],
   bindings: {
-    DEVBOX_CONTAINER: container,
-    CLOUDFLARE_TUNNEL_TOKEN: tunnel.token.unencrypted,
+    DEVBOX_CONTAINER: await container,
+    CLOUDFLARE_TUNNEL_TOKEN: tunnelToken,
     WARP_DESTINATION_IP,
     SSH_PUBLIC_KEY: process.env.SSH_PUBLIC_KEY ?? "",
     SSH_USERNAME: process.env.SSH_USERNAME ?? "dev",
