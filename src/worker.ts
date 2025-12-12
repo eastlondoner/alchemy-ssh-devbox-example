@@ -90,16 +90,21 @@ function page(opts: {
         <h3>SSH target</h3>
         <p>
           IP (WARP route): <code>${warpIp}</code><br/>
-          Username: <code>${sshUsername}</code>
+          Username: <code>${sshUsername}</code><br/>
+          Password: <em>(empty - just press Enter)</em>
         </p>
         <pre><code># ~/.ssh/config
 Host ${sshHostAlias}
   HostName ${warpIp}
   User ${sshUsername}
+  StrictHostKeyChecking no
+  PreferredAuthentications password
+  PubkeyAuthentication no
+  UserKnownHostsFile /dev/null
   ServerAliveInterval 30
   ServerAliveCountMax 3
 </code></pre>
-        <pre><code># connect
+        <pre><code># connect (password is empty, just press Enter)
 ssh ${sshHostAlias}
 </code></pre>
       </div>
@@ -164,6 +169,21 @@ export default {
       return json(result);
     }
 
+    if (url.pathname === "/api/stop") {
+      if (request.method !== "POST") return json({ error: "method not allowed" }, { status: 405 });
+      await container.stop();
+      return json({ status: "stopped" });
+    }
+
+    if (url.pathname === "/api/restart") {
+      if (request.method !== "POST") return json({ error: "method not allowed" }, { status: 405 });
+      await container.stop();
+      // Small delay to ensure clean shutdown
+      await new Promise(r => setTimeout(r, 2000));
+      const result = await container.ensureStarted();
+      return json(result);
+    }
+
     if (url.pathname === "/api/status") {
       const status = await container.getStatus();
       return json({ status });
@@ -172,6 +192,31 @@ export default {
     if (url.pathname === "/api/ssh") {
       const info = await container.getSshInfo();
       return json(info);
+    }
+
+    // Proxy to the container's internal HTTP server for health checks
+    if (url.pathname === "/api/container-health") {
+      try {
+        const resp = await container.fetch(new Request("http://internal/health"));
+        const text = await resp.text();
+        return json({ healthy: true, response: text.trim() });
+      } catch (e: any) {
+        return json({ healthy: false, error: e.message }, { status: 500 });
+      }
+    }
+
+    // Debug endpoint to check bindings (worker level)
+    if (url.pathname === "/api/debug") {
+      return json({
+        worker: {
+          hasTunnelToken: !!env.CLOUDFLARE_TUNNEL_TOKEN && env.CLOUDFLARE_TUNNEL_TOKEN !== "",
+          tunnelTokenLength: env.CLOUDFLARE_TUNNEL_TOKEN?.length ?? 0,
+          warpDestinationIp: env.WARP_DESTINATION_IP,
+          sshUsername: env.SSH_USERNAME,
+          hasSshPublicKey: !!env.SSH_PUBLIC_KEY && env.SSH_PUBLIC_KEY !== "",
+        },
+        container: await container.getContainerEnv(),
+      });
     }
 
     const ssh = await container.getSshInfo();

@@ -12,7 +12,7 @@ export class DevboxContainer extends Container {
   // Environment variables passed into the *container runtime*.
   envVars = {
     CLOUDFLARE_TUNNEL_TOKEN: (this.env as Env).CLOUDFLARE_TUNNEL_TOKEN ?? "null",
-    WARP_DESTINATION_IP: (this.env as Env).WARP_DESTINATION_IP ?? "100.101.102.103",
+    WARP_DESTINATION_IP: (this.env as Env).WARP_DESTINATION_IP ?? "100.120.1.1",
     SSH_PUBLIC_KEY: (this.env as Env).SSH_PUBLIC_KEY ?? "",
     SSH_USERNAME: (this.env as Env).SSH_USERNAME ?? "dev",
   };
@@ -33,6 +33,11 @@ export class DevboxContainer extends Container {
   public async ensureStarted(): Promise<{ status: string }> {
     await this.start();
     return { status: await this.getStatus() };
+  }
+
+  // RPC used by the Worker UI - forcefully stop the container
+  public override async stop(): Promise<void> {
+    await super.stop();
   }
 
   // RPC used by the Worker UI
@@ -59,6 +64,17 @@ export class DevboxContainer extends Container {
     }
     // Default fallback
     return running ? "running" : "stopped";
+  }
+
+  // RPC: get the environment variables the container was started with (for debugging)
+  public async getContainerEnv(): Promise<Record<string, string | boolean | number>> {
+    return {
+      hasTunnelToken: !!this.envVars.CLOUDFLARE_TUNNEL_TOKEN && this.envVars.CLOUDFLARE_TUNNEL_TOKEN !== "null",
+      tunnelTokenLength: this.envVars.CLOUDFLARE_TUNNEL_TOKEN?.length ?? 0,
+      warpDestinationIp: this.envVars.WARP_DESTINATION_IP,
+      sshUsername: this.envVars.SSH_USERNAME,
+      hasSshPublicKey: !!this.envVars.SSH_PUBLIC_KEY && this.envVars.SSH_PUBLIC_KEY !== "",
+    };
   }
 
   // Minimal container HTTP endpoint (useful for quick sanity checks)

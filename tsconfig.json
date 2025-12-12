@@ -9,7 +9,7 @@
     "types": ["@cloudflare/workers-types", "node"],
     "noEmit": true
   },
-  "include": ["src/**/*.ts", "alchemy.run.ts", "@alchemy.run.ts"]
+  "include": ["src/**/*.ts", "alchemy.run.ts"]
 }
 
 

@@ -17,19 +17,9 @@ if ! id -u "$SSH_USERNAME" >/dev/null 2>&1; then
   useradd -m -s /bin/bash "$SSH_USERNAME"
 fi
 
-HOME_DIR="$(getent passwd "$SSH_USERNAME" | cut -d: -f6)"
-mkdir -p "$HOME_DIR/.ssh"
-chmod 700 "$HOME_DIR/.ssh"
-
-if [ -n "$SSH_PUBLIC_KEY" ]; then
-  echo "[devbox] installing SSH public key for $SSH_USERNAME"
-  printf "%s\n" "$SSH_PUBLIC_KEY" > "$HOME_DIR/.ssh/authorized_keys"
-  chmod 600 "$HOME_DIR/.ssh/authorized_keys"
-else
-  echo "[devbox] WARNING: SSH_PUBLIC_KEY is empty; SSH will not be usable until you set it."
-fi
-
-chown -R "$SSH_USERNAME:$SSH_USERNAME" "$HOME_DIR/.ssh"
+# Set empty password for the user (WARP routing provides the security layer)
+echo "[devbox] setting empty password for $SSH_USERNAME"
+passwd -d "$SSH_USERNAME" || echo "[devbox] WARNING: Failed to set empty password"
 
 # ============================================================================
 # WARP / Cloudflare Tunnel Setup

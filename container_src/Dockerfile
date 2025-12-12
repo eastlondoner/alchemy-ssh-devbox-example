@@ -40,23 +40,24 @@ RUN apt-get update \
   && rm -rf /var/lib/apt/lists/*
 
 # Default sshd config: only localhost until entrypoint adds WARP IP
+# Uses password auth with empty password for simplicity (WARP provides security)
 RUN printf '%s\n' \
   '# Listen on localhost only by default' \
   '# The entrypoint script appends WARP_DESTINATION_IP at runtime' \
   'ListenAddress 127.0.0.1' \
   'ListenAddress ::1' \
   '' \
-  '# Security: key-only auth, no root login' \
+  '# Security: no root login' \
   'PermitRootLogin no' \
-  'PasswordAuthentication no' \
-  'KbdInteractiveAuthentication no' \
-  'ChallengeResponseAuthentication no' \
-  'UsePAM yes' \
   'AllowUsers dev' \
   '' \
-  '# Key authentication' \
-  'PubkeyAuthentication yes' \
-  'AuthorizedKeysFile .ssh/authorized_keys' \
+  '# Password auth with empty password (WARP routing provides security layer)' \
+  'PasswordAuthentication yes' \
+  'PermitEmptyPasswords yes' \
+  'UsePAM yes' \
+  '' \
+  '# Disable pubkey (password-only for simplicity)' \
+  'PubkeyAuthentication no' \
   '' \
   '# Keep connections stable for editor sessions' \
   'ClientAliveInterval 30' \
